@@ -240,23 +240,26 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
                 menu.addItem(disabledItem(snapshot.plainEnglish))
             }
 
+            menu.addItem(spacerItem())
             menu.addItem(headerItem("Buffer (\(formatBytes(snapshot.beforeSwapBufferBytes)))"))
             menu.addItem(disabledItem("Fast buffer: \(formatBytes(snapshot.fastHeadroomBytes))"))
             menu.addItem(grandchildItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
             menu.addItem(grandchildItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
             menu.addItem(disabledItem("Compressed buffer: \(formatBytes(snapshot.compressorBytes))"))
 
+            menu.addItem(spacerItem())
             menu.addItem(headerItem("Usage (\(formatBytes(snapshot.activeBytes + snapshot.wiredBytes)))"))
             menu.addItem(disabledItem("Apps active now: \(formatBytes(snapshot.activeBytes))"))
             menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
 
+            menu.addItem(spacerItem())
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
             menu.addItem(disabledItem("Memory pressure: Unknown"))
             menu.addItem(disabledItem("Unable to read pressure"))
         }
 
-        menu.addItem(.separator())
+        menu.addItem(spacerItem())
         let refreshItem = NSMenuItem(title: "Refresh", action: #selector(refresh), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
@@ -280,6 +283,12 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
     private func grandchildItem(_ title: String) -> NSMenuItem {
         disabledItem("      \(title)")
+    }
+
+    private func spacerItem() -> NSMenuItem {
+        let item = NSMenuItem(title: " ", action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
     }
 
     private func headerItem(_ title: String) -> NSMenuItem {

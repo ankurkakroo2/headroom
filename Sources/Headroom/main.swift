@@ -240,19 +240,16 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
                 menu.addItem(disabledItem(snapshot.plainEnglish))
             }
 
-            menu.addItem(.separator())
             menu.addItem(headerItem("Buffer (\(formatBytes(snapshot.beforeSwapBufferBytes)))"))
             menu.addItem(disabledItem("Fast buffer: \(formatBytes(snapshot.fastHeadroomBytes))"))
             menu.addItem(grandchildItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
             menu.addItem(grandchildItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
             menu.addItem(disabledItem("Compressed buffer: \(formatBytes(snapshot.compressorBytes))"))
 
-            menu.addItem(.separator())
             menu.addItem(headerItem("Usage (\(formatBytes(snapshot.activeBytes + snapshot.wiredBytes)))"))
             menu.addItem(disabledItem("Apps active now: \(formatBytes(snapshot.activeBytes))"))
             menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
 
-            menu.addItem(.separator())
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
             menu.addItem(disabledItem("Memory pressure: Unknown"))

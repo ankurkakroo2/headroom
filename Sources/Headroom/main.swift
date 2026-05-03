@@ -284,11 +284,11 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     }
 
     private func childItem(_ title: String) -> NSMenuItem {
-        disabledItem("  \(title)")
+        disabledItem("      \(title)")
     }
 
     private func grandchildItem(_ title: String) -> NSMenuItem {
-        disabledItem("    \(title)")
+        disabledItem("            \(title)")
     }
 
     private func headerItem(_ title: String) -> NSMenuItem {

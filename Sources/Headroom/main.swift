@@ -253,10 +253,6 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
 
             menu.addItem(.separator())
-            menu.addItem(headerItem("Details"))
-            if let level = snapshot.pressureLevel {
-                menu.addItem(disabledItem("macOS pressure level: \(level)"))
-            }
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
             menu.addItem(disabledItem("Memory pressure: Unknown"))
@@ -286,7 +282,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     }
 
     private func grandchildItem(_ title: String) -> NSMenuItem {
-        disabledItem("            \(title)")
+        disabledItem("      \(title)")
     }
 
     private func headerItem(_ title: String) -> NSMenuItem {

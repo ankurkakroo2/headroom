@@ -39,6 +39,36 @@ struct MemorySnapshot {
     var cacheBytes: UInt64 {
         inactiveBytes + speculativeBytes + purgeableBytes
     }
+
+    var appAndSystemBytes: UInt64 {
+        activeBytes + wiredBytes + compressorBytes
+    }
+
+    var statusSummary: String {
+        switch pressure {
+        case .normal:
+            return "Healthy"
+        case .warning:
+            return "Watch"
+        case .critical:
+            return "Constrained"
+        case .unknown:
+            return "Unknown"
+        }
+    }
+
+    var plainEnglish: String {
+        switch pressure {
+        case .normal:
+            return "No action needed"
+        case .warning:
+            return "Close a heavy app soon"
+        case .critical:
+            return "Close heavy apps now"
+        case .unknown:
+            return "Unable to read pressure"
+        }
+    }
 }
 
 final class MemorySampler {
@@ -192,24 +222,39 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
 
         if let snapshot = latestSnapshot {
-            menu.addItem(disabledItem("Memory Pressure: \(snapshot.pressure.rawValue)"))
+            menu.addItem(headerItem("Status"))
+            menu.addItem(disabledItem("Memory: \(snapshot.statusSummary)"))
+            menu.addItem(disabledItem("Meaning: \(snapshot.plainEnglish)"))
             if let level = snapshot.pressureLevel {
-                menu.addItem(disabledItem("Kernel Level: \(level)"))
+                menu.addItem(disabledItem("macOS pressure level: \(level)"))
             }
+
             menu.addItem(.separator())
-            menu.addItem(disabledItem("Active: \(formatBytes(snapshot.activeBytes))"))
-            menu.addItem(disabledItem("Inactive/cache: \(formatBytes(snapshot.cacheBytes))"))
-            menu.addItem(disabledItem("Wired: \(formatBytes(snapshot.wiredBytes))"))
-            menu.addItem(disabledItem("Compressed: \(formatBytes(snapshot.compressorBytes))"))
-            menu.addItem(disabledItem("Free: \(formatBytes(snapshot.freeBytes))"))
             if let swapUsedBytes = snapshot.swapUsedBytes, let swapTotalBytes = snapshot.swapTotalBytes {
-                menu.addItem(disabledItem("Swap: \(formatBytes(swapUsedBytes)) / \(formatBytes(swapTotalBytes))"))
+                menu.addItem(headerItem("What Matters"))
+                menu.addItem(disabledItem("Swap used: \(formatBytes(swapUsedBytes))"))
+                menu.addItem(disabledItem("Compressed old app memory: \(formatBytes(snapshot.compressorBytes))"))
+                menu.addItem(disabledItem("Reusable cache: \(formatBytes(snapshot.cacheBytes))"))
+                menu.addItem(disabledItem("Actually free: \(formatBytes(snapshot.freeBytes))"))
+                menu.addItem(disabledItem("Swap capacity: \(formatBytes(swapTotalBytes))"))
             } else {
-                menu.addItem(disabledItem("Swap: unavailable"))
+                menu.addItem(headerItem("What Matters"))
+                menu.addItem(disabledItem("Swap used: unavailable"))
+                menu.addItem(disabledItem("Compressed old app memory: \(formatBytes(snapshot.compressorBytes))"))
+                menu.addItem(disabledItem("Reusable cache: \(formatBytes(snapshot.cacheBytes))"))
+                menu.addItem(disabledItem("Actually free: \(formatBytes(snapshot.freeBytes))"))
             }
+
+            menu.addItem(.separator())
+            menu.addItem(headerItem("Details"))
+            menu.addItem(disabledItem("Apps active now: \(formatBytes(snapshot.activeBytes))"))
+            menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
+            menu.addItem(disabledItem("Apps + system + compressed: \(formatBytes(snapshot.appAndSystemBytes))"))
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
-            menu.addItem(disabledItem("Memory Pressure: Unknown"))
+            menu.addItem(headerItem("Status"))
+            menu.addItem(disabledItem("Memory: Unknown"))
+            menu.addItem(disabledItem("Meaning: Unable to read pressure"))
         }
 
         menu.addItem(.separator())
@@ -227,6 +272,17 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     private func disabledItem(_ title: String) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
+        return item
+    }
+
+    private func headerItem(_ title: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title.uppercased(), action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: NSColor.secondaryLabelColor
+        ]
+        item.attributedTitle = NSAttributedString(string: title.uppercased(), attributes: attributes)
         return item
     }
 

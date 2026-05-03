@@ -231,7 +231,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
         if let snapshot = latestSnapshot {
             menu.addItem(headerItem("Status"))
-            menu.addItem(disabledItem("Memory: \(snapshot.statusSummary)"))
+            menu.addItem(disabledItem("Memory pressure: \(snapshot.statusSummary)"))
             if let swapUsedBytes = snapshot.swapUsedBytes {
                 menu.addItem(disabledItem("Swap used: \(formatBytes(swapUsedBytes))"))
             } else {
@@ -261,7 +261,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
             menu.addItem(headerItem("Status"))
-            menu.addItem(disabledItem("Memory: Unknown"))
+            menu.addItem(disabledItem("Memory pressure: Unknown"))
             menu.addItem(disabledItem("Meaning: Unable to read pressure"))
         }
 

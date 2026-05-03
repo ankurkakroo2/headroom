@@ -20,6 +20,7 @@ Click the dot to see a simple model:
 - Memory pressure and swap used
 - Buffer left before swap
 - Current usage by apps and locked system memory
+- Top app groups to consider closing when pressure rises
 
 No Electron. No analytics. No network. No memory cleaning.
 

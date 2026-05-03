@@ -9,6 +9,7 @@ APP_NAME="Headroom.app"
 
 mkdir -p "$INSTALL_DIR"
 pkill -f '/Headroom.app/Contents/MacOS/Headroom' 2>/dev/null || true
+sleep 0.5
 rm -rf "$INSTALL_DIR/$APP_NAME"
 cp -R "$ROOT_DIR/dist/$APP_NAME" "$INSTALL_DIR/$APP_NAME"
 open "$INSTALL_DIR/$APP_NAME"

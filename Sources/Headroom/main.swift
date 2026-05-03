@@ -70,13 +70,18 @@ struct MemorySnapshot {
         case .normal:
             return "No action needed"
         case .warning:
-            return "Close a heavy app soon"
+            return "If slow, close a top app"
         case .critical:
-            return "Close heavy apps now"
+            return "Close a top app now"
         case .unknown:
             return "Unable to read pressure"
         }
     }
+}
+
+struct AppMemoryItem {
+    let name: String
+    let bytes: UInt64
 }
 
 final class MemorySampler {
@@ -159,6 +164,76 @@ final class MemorySampler {
     }
 }
 
+final class TopAppSampler {
+    func sample(limit: Int = 5) -> [AppMemoryItem] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ps")
+        process.arguments = ["-axo", "rss=,comm=,args="]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return []
+        }
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        guard let output = String(data: data, encoding: .utf8) else { return [] }
+
+        var groups: [String: UInt64] = [:]
+        for line in output.split(separator: "\n") {
+            guard let parsed = parseProcessLine(String(line)) else { continue }
+            groups[parsed.name, default: 0] += parsed.bytes
+        }
+
+        return groups
+            .map { AppMemoryItem(name: $0.key, bytes: $0.value) }
+            .filter { $0.bytes >= 100 * 1024 * 1024 }
+            .sorted { $0.bytes > $1.bytes }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    private func parseProcessLine(_ line: String) -> AppMemoryItem? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let parts = trimmed.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+        guard parts.count >= 2, let rssKilobytes = UInt64(parts[0]) else { return nil }
+
+        let commandAndArgs = parts.dropFirst().joined(separator: " ")
+        guard let name = appName(from: commandAndArgs) else { return nil }
+        return AppMemoryItem(name: name, bytes: rssKilobytes * 1024)
+    }
+
+    private func appName(from text: String) -> String? {
+        let closeableRoots = [
+            "/Applications/",
+            "/Users/",
+            "/System/Applications/"
+        ]
+
+        if !closeableRoots.contains(where: { text.contains($0) }) {
+            if text.contains("/node") || text.hasPrefix("node ") || text.contains(" node ") {
+                return "Node / dev tools"
+            }
+            return nil
+        }
+
+        guard let appRange = text.range(of: ".app") else { return nil }
+        let prefix = text[..<appRange.lowerBound]
+        guard let slash = prefix.lastIndex(of: "/") else { return nil }
+        let name = String(prefix[prefix.index(after: slash)...])
+
+        if name.contains("Helper") || name == "Electron Framework" {
+            return nil
+        }
+        return name
+    }
+}
+
 final class DotImageFactory {
     func image(for state: PressureState) -> NSImage {
         let size = NSSize(width: 12, height: 18)
@@ -190,10 +265,12 @@ final class DotImageFactory {
 @MainActor
 final class HeadroomApp: NSObject, NSApplicationDelegate {
     private let sampler = MemorySampler()
+    private let topAppSampler = TopAppSampler()
     private let imageFactory = DotImageFactory()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var timer: Timer?
     private var latestSnapshot: MemorySnapshot?
+    private var topApps: [AppMemoryItem] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -219,6 +296,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
     @objc private func refresh() {
         latestSnapshot = sampler.sample()
+        topApps = topAppSampler.sample()
         if let snapshot = latestSnapshot {
             statusItem.button?.image = imageFactory.image(for: snapshot.pressure)
             statusItem.button?.toolTip = "Memory pressure: \(snapshot.statusSummary)"
@@ -251,6 +329,12 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             menu.addItem(headerItem("Usage (\(formatBytes(snapshot.activeBytes + snapshot.wiredBytes)))"))
             menu.addItem(disabledItem("Apps active now: \(formatBytes(snapshot.activeBytes))"))
             menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
+            if !topApps.isEmpty {
+                menu.addItem(disabledItem("Top app groups"))
+                for app in topApps {
+                    menu.addItem(grandchildItem("\(app.name): ~\(formatBytes(app.bytes))"))
+                }
+            }
 
             menu.addItem(.separator())
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))

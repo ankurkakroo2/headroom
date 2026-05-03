@@ -10,10 +10,12 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
 cd "$ROOT_DIR"
 swift build -c release
+swift scripts/make-icon.swift "$ROOT_DIR"
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp ".build/release/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+cp "$ROOT_DIR/build/Headroom.icns" "$RESOURCES_DIR/Headroom.icns"
 
 cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -27,6 +29,8 @@ cat > "$CONTENTS_DIR/Info.plist" <<'PLIST'
     <key>CFBundleName</key>
     <string>Headroom</string>
     <key>CFBundleDisplayName</key>
+    <string>Headroom</string>
+    <key>CFBundleIconFile</key>
     <string>Headroom</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>

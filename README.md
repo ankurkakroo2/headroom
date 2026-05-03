@@ -1,6 +1,8 @@
 # Headroom
 
-<img width="512" height="512" alt="image" align="center" src="https://github.com/user-attachments/assets/9d282d83-f7e0-4b39-b748-7b099e12f696" />
+<div align="center">
+  <img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/9d282d83-f7e0-4b39-b748-7b099e12f696" />
+</div>
 
 Headroom is a tiny native macOS menu bar app for memory pressure.
 

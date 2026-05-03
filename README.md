@@ -2,34 +2,46 @@
 
 Headroom is a tiny native macOS menu bar app for memory pressure.
 
-It intentionally avoids showing scary RAM-used percentages. The menu bar shows one dot:
+It exists because macOS “memory used” is a noisy number. Modern macOS keeps RAM full with cache, compression, and inactive pages, so a machine can show 20+ GB used while still being healthy. Headroom focuses on the signal that matters: memory pressure and swap.
 
-- Green: normal
-- Amber: warning
-- Red: critical
+The menu bar shows one quiet dot:
+
+- Green: low pressure
+- Amber: medium pressure
+- Red: high pressure
 - Gray: unknown
 
-Click the dot to see compact memory buckets: active, inactive/cache, wired, compressed, free, and swap.
+Click the dot to see a simple model:
 
-## Build
+- Memory pressure and swap used
+- Buffer left before swap
+- Current usage by apps and locked system memory
+
+No Electron. No analytics. No network. No memory cleaning.
+
+## Install
+
+```bash
+git clone https://github.com/ankurkakroo2/headroom.git && cd headroom && ./scripts/install.sh
+```
+
+The installer builds the app, copies it to:
+
+```text
+~/Applications/Headroom.app
+```
+
+and launches it.
+
+## Build Locally
 
 ```bash
 ./scripts/build-app.sh
 ```
 
-The app bundle is written to:
+The app bundle is written to `dist/Headroom.app`.
 
-```text
-dist/Headroom.app
-```
-
-## Run
-
-```bash
-open dist/Headroom.app
-```
-
-## Measure Headroom Itself
+## Measure Headroom
 
 ```bash
 ./scripts/measure.sh

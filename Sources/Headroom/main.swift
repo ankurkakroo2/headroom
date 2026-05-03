@@ -44,6 +44,14 @@ struct MemorySnapshot {
         activeBytes + wiredBytes + compressorBytes
     }
 
+    var fastHeadroomBytes: UInt64 {
+        cacheBytes + freeBytes
+    }
+
+    var beforeSwapBufferBytes: UInt64 {
+        fastHeadroomBytes + compressorBytes
+    }
+
     var statusSummary: String {
         switch pressure {
         case .normal:
@@ -224,25 +232,22 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         if let snapshot = latestSnapshot {
             menu.addItem(headerItem("Status"))
             menu.addItem(disabledItem("Memory: \(snapshot.statusSummary)"))
-            menu.addItem(disabledItem("Meaning: \(snapshot.plainEnglish)"))
-            if let level = snapshot.pressureLevel {
-                menu.addItem(disabledItem("macOS pressure level: \(level)"))
+            if let swapUsedBytes = snapshot.swapUsedBytes {
+                menu.addItem(disabledItem("Swap used: \(formatBytes(swapUsedBytes))"))
+            } else {
+                menu.addItem(disabledItem("Swap used: unavailable"))
             }
+            menu.addItem(disabledItem("Meaning: \(snapshot.plainEnglish)"))
 
             menu.addItem(.separator())
-            if let swapUsedBytes = snapshot.swapUsedBytes, let swapTotalBytes = snapshot.swapTotalBytes {
-                menu.addItem(headerItem("What Matters"))
-                menu.addItem(disabledItem("Swap used: \(formatBytes(swapUsedBytes))"))
-                menu.addItem(disabledItem("Compressed old app memory: \(formatBytes(snapshot.compressorBytes))"))
-                menu.addItem(disabledItem("Reusable cache: \(formatBytes(snapshot.cacheBytes))"))
-                menu.addItem(disabledItem("Actually free: \(formatBytes(snapshot.freeBytes))"))
+            menu.addItem(headerItem("Before Swap Buffer"))
+            menu.addItem(disabledItem("Rough buffer: \(formatBytes(snapshot.beforeSwapBufferBytes))"))
+            menu.addItem(disabledItem("Fast headroom: \(formatBytes(snapshot.fastHeadroomBytes))"))
+            menu.addItem(disabledItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
+            menu.addItem(disabledItem("Compressed old apps: \(formatBytes(snapshot.compressorBytes))"))
+            menu.addItem(disabledItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
+            if let swapTotalBytes = snapshot.swapTotalBytes {
                 menu.addItem(disabledItem("Swap capacity: \(formatBytes(swapTotalBytes))"))
-            } else {
-                menu.addItem(headerItem("What Matters"))
-                menu.addItem(disabledItem("Swap used: unavailable"))
-                menu.addItem(disabledItem("Compressed old app memory: \(formatBytes(snapshot.compressorBytes))"))
-                menu.addItem(disabledItem("Reusable cache: \(formatBytes(snapshot.cacheBytes))"))
-                menu.addItem(disabledItem("Actually free: \(formatBytes(snapshot.freeBytes))"))
             }
 
             menu.addItem(.separator())
@@ -250,6 +255,9 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             menu.addItem(disabledItem("Apps active now: \(formatBytes(snapshot.activeBytes))"))
             menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
             menu.addItem(disabledItem("Apps + system + compressed: \(formatBytes(snapshot.appAndSystemBytes))"))
+            if let level = snapshot.pressureLevel {
+                menu.addItem(disabledItem("macOS pressure level: \(level)"))
+            }
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
             menu.addItem(headerItem("Status"))

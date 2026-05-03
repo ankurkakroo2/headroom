@@ -1,5 +1,7 @@
 # Headroom
 
+<img width="512" height="512" alt="image" align="center" src="https://github.com/user-attachments/assets/9d282d83-f7e0-4b39-b748-7b099e12f696" />
+
 Headroom is a tiny native macOS menu bar app for memory pressure.
 
 It exists because macOS “memory used” is a noisy number. Modern macOS keeps RAM full with cache, compression, and inactive pages, so a machine can show 20+ GB used while still being healthy. Headroom focuses on the signal that matters: memory pressure and swap.

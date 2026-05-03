@@ -123,14 +123,14 @@ final class MemorySampler {
 
 final class DotImageFactory {
     func image(for state: PressureState) -> NSImage {
-        let size = NSSize(width: 18, height: 18)
+        let size = NSSize(width: 12, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
 
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: size).fill()
 
-        let dotRect = NSRect(x: 5, y: 5, width: 8, height: 8)
+        let dotRect = NSRect(x: 2, y: 5, width: 8, height: 8)
         let dot = NSBezierPath(ovalIn: dotRect)
         state.color.setFill()
         dot.fill()
@@ -171,8 +171,10 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     }
 
     private func configureStatusItem() {
+        statusItem.length = 14
         guard let button = statusItem.button else { return }
         button.imagePosition = .imageOnly
+        button.imageScaling = .scaleNone
         button.toolTip = "Headroom"
         statusItem.menu = makeMenu()
     }

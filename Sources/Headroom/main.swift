@@ -242,12 +242,12 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             menu.addItem(.separator())
             menu.addItem(headerItem("Before Swap Buffer"))
             menu.addItem(disabledItem("Rough buffer: \(formatBytes(snapshot.beforeSwapBufferBytes))"))
-            menu.addItem(disabledItem("Fast headroom: \(formatBytes(snapshot.fastHeadroomBytes))"))
-            menu.addItem(disabledItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
-            menu.addItem(disabledItem("Compressed old apps: \(formatBytes(snapshot.compressorBytes))"))
-            menu.addItem(disabledItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
+            menu.addItem(childItem("Fast headroom: \(formatBytes(snapshot.fastHeadroomBytes))"))
+            menu.addItem(grandchildItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
+            menu.addItem(grandchildItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
+            menu.addItem(childItem("Compressed old apps: \(formatBytes(snapshot.compressorBytes))"))
             if let swapTotalBytes = snapshot.swapTotalBytes {
-                menu.addItem(disabledItem("Swap capacity: \(formatBytes(swapTotalBytes))"))
+                menu.addItem(childItem("Swap capacity: \(formatBytes(swapTotalBytes))"))
             }
 
             menu.addItem(.separator())
@@ -281,6 +281,14 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
+    }
+
+    private func childItem(_ title: String) -> NSMenuItem {
+        disabledItem("  \(title)")
+    }
+
+    private func grandchildItem(_ title: String) -> NSMenuItem {
+        disabledItem("    \(title)")
     }
 
     private func headerItem(_ title: String) -> NSMenuItem {

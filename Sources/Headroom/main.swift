@@ -55,11 +55,11 @@ struct MemorySnapshot {
     var statusSummary: String {
         switch pressure {
         case .normal:
-            return "Healthy"
+            return "Low"
         case .warning:
-            return "Watch"
+            return "Medium"
         case .critical:
-            return "Constrained"
+            return "High"
         case .unknown:
             return "Unknown"
         }
@@ -221,7 +221,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         latestSnapshot = sampler.sample()
         if let snapshot = latestSnapshot {
             statusItem.button?.image = imageFactory.image(for: snapshot.pressure)
-            statusItem.button?.toolTip = "Memory pressure: \(snapshot.pressure.rawValue)"
+            statusItem.button?.toolTip = "Memory pressure: \(snapshot.statusSummary)"
         }
         statusItem.menu = makeMenu()
     }
@@ -230,39 +230,37 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
 
         if let snapshot = latestSnapshot {
-            menu.addItem(headerItem("Status"))
             menu.addItem(disabledItem("Memory pressure: \(snapshot.statusSummary)"))
             if let swapUsedBytes = snapshot.swapUsedBytes {
                 menu.addItem(disabledItem("Swap used: \(formatBytes(swapUsedBytes))"))
             } else {
                 menu.addItem(disabledItem("Swap used: unavailable"))
             }
-            menu.addItem(disabledItem("Meaning: \(snapshot.plainEnglish)"))
-
-            menu.addItem(.separator())
-            menu.addItem(headerItem("Before Swap Buffer"))
-            menu.addItem(disabledItem("Rough buffer: \(formatBytes(snapshot.beforeSwapBufferBytes))"))
-            menu.addItem(childItem("Fast headroom: \(formatBytes(snapshot.fastHeadroomBytes))"))
-            menu.addItem(grandchildItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
-            menu.addItem(grandchildItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
-            menu.addItem(childItem("Compressed old apps: \(formatBytes(snapshot.compressorBytes))"))
-            if let swapTotalBytes = snapshot.swapTotalBytes {
-                menu.addItem(childItem("Swap capacity: \(formatBytes(swapTotalBytes))"))
+            if snapshot.pressure != .normal {
+                menu.addItem(disabledItem(snapshot.plainEnglish))
             }
 
             menu.addItem(.separator())
-            menu.addItem(headerItem("Details"))
+            menu.addItem(headerItem("Buffer (\(formatBytes(snapshot.beforeSwapBufferBytes)))"))
+            menu.addItem(disabledItem("Fast buffer: \(formatBytes(snapshot.fastHeadroomBytes))"))
+            menu.addItem(grandchildItem("Files/cache: \(formatBytes(snapshot.cacheBytes))"))
+            menu.addItem(grandchildItem("Truly free: \(formatBytes(snapshot.freeBytes))"))
+            menu.addItem(disabledItem("Compressed buffer: \(formatBytes(snapshot.compressorBytes))"))
+
+            menu.addItem(.separator())
+            menu.addItem(headerItem("Usage (\(formatBytes(snapshot.activeBytes + snapshot.wiredBytes)))"))
             menu.addItem(disabledItem("Apps active now: \(formatBytes(snapshot.activeBytes))"))
             menu.addItem(disabledItem("System locked: \(formatBytes(snapshot.wiredBytes))"))
-            menu.addItem(disabledItem("Apps + system + compressed: \(formatBytes(snapshot.appAndSystemBytes))"))
+
+            menu.addItem(.separator())
+            menu.addItem(headerItem("Details"))
             if let level = snapshot.pressureLevel {
                 menu.addItem(disabledItem("macOS pressure level: \(level)"))
             }
             menu.addItem(disabledItem("Updated: \(formatDate(snapshot.capturedAt))"))
         } else {
-            menu.addItem(headerItem("Status"))
             menu.addItem(disabledItem("Memory pressure: Unknown"))
-            menu.addItem(disabledItem("Meaning: Unable to read pressure"))
+            menu.addItem(disabledItem("Unable to read pressure"))
         }
 
         menu.addItem(.separator())

@@ -79,7 +79,7 @@ struct MemorySnapshot {
     }
 }
 
-struct AppMemoryItem {
+struct AppMemoryItem: Sendable {
     let name: String
     let bytes: UInt64
 }
@@ -164,7 +164,7 @@ final class MemorySampler {
     }
 }
 
-final class TopAppSampler {
+final class TopAppSampler: @unchecked Sendable {
     func sample(limit: Int = 5) -> [AppMemoryItem] {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/ps")
@@ -176,12 +176,12 @@ final class TopAppSampler {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return []
         }
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         guard let output = String(data: data, encoding: .utf8) else { return [] }
 
         var groups: [String: UInt64] = [:]
@@ -271,6 +271,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     private var timer: Timer?
     private var latestSnapshot: MemorySnapshot?
     private var topApps: [AppMemoryItem] = []
+    private var isSamplingTopApps = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -296,12 +297,29 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
     @objc private func refresh() {
         latestSnapshot = sampler.sample()
-        topApps = topAppSampler.sample()
         if let snapshot = latestSnapshot {
             statusItem.button?.image = imageFactory.image(for: snapshot.pressure)
             statusItem.button?.toolTip = "Memory pressure: \(snapshot.statusSummary)"
         }
         statusItem.menu = makeMenu()
+        refreshTopApps()
+    }
+
+    private func refreshTopApps() {
+        guard !isSamplingTopApps else { return }
+        isSamplingTopApps = true
+        let sampler = topAppSampler
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let apps = sampler.sample()
+
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.topApps = apps
+                self.isSamplingTopApps = false
+                self.statusItem.menu = self.makeMenu()
+            }
+        }
     }
 
     private func makeMenu() -> NSMenu {

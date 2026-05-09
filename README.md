@@ -20,8 +20,7 @@ Click the dot to see a simple model:
 - Memory pressure and swap used
 - Buffer left before swap
 - Current usage by apps and locked system memory
-- Top app groups to consider closing when pressure rises
-- A guarded Restart Mac option when swap is high
+- Top app groups to quit when pressure rises
 
 No Electron. No analytics. No network. No memory cleaning.
 
@@ -30,7 +29,7 @@ No Electron. No analytics. No network. No memory cleaning.
 - at least 8 GB used and at least 60% of configured swap is full
 - at least 12 GB used regardless of configured swap size
 
-Restarting clears the current swap state, but it closes apps and can lose unsaved work, so Headroom always asks for confirmation.
+When swap is high, Headroom highlights the condition and turns matching top app groups into guarded Quit actions. Quitting a heavy app does not instantly erase existing swap files, but it gives macOS room to reclaim memory and stop leaning on swap without restarting.
 
 ## Install
 

@@ -268,7 +268,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     private let sampler = MemorySampler()
     private let topAppSampler = TopAppSampler()
     private let imageFactory = DotImageFactory()
-    private let restartRequester = SystemRestartRequester()
+    private let appQuitRequester = AppQuitRequester()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var timer: Timer?
     private var latestSnapshot: MemorySnapshot?
@@ -338,10 +338,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
                 menu.addItem(disabledItem(snapshot.plainEnglish))
             }
             if isSwapHigh(snapshot) {
-                menu.addItem(disabledItem("Swap is high; restart can help"))
-                let restartItem = NSMenuItem(title: "Restart Mac...", action: #selector(confirmRestartMac), keyEquivalent: "")
-                restartItem.target = self
-                menu.addItem(restartItem)
+                menu.addItem(disabledItem("Swap is high; quit a top app to recover"))
             }
 
             menu.addItem(.separator())
@@ -358,7 +355,18 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             if !topApps.isEmpty {
                 menu.addItem(disabledItem("Top app groups"))
                 for app in topApps {
-                    menu.addItem(grandchildItem("\(app.name): ~\(formatBytes(app.bytes))"))
+                    if appQuitRequester.canRequestQuit(appName: app.name) {
+                        let quitItem = NSMenuItem(
+                            title: "      Quit \(app.name): ~\(formatBytes(app.bytes))",
+                            action: #selector(confirmQuitApp(_:)),
+                            keyEquivalent: ""
+                        )
+                        quitItem.target = self
+                        quitItem.representedObject = app.name
+                        menu.addItem(quitItem)
+                    } else {
+                        menu.addItem(grandchildItem("\(app.name): ~\(formatBytes(app.bytes))"))
+                    }
                 }
             }
 
@@ -392,7 +400,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         var lines = ["Memory pressure: \(snapshot.statusSummary)"]
         if isSwapHigh(snapshot), let swapUsedBytes = snapshot.swapUsedBytes {
             lines.append("Swap high: \(formatBytes(swapUsedBytes)) used")
-            lines.append("Click for Restart Mac option")
+            lines.append("Click to quit a top app")
         }
         return lines.joined(separator: "\n")
     }
@@ -442,30 +450,36 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    @objc private func confirmRestartMac() {
-        guard let snapshot = latestSnapshot else { return }
+    @objc private func confirmQuitApp(_ sender: NSMenuItem) {
+        guard let appName = sender.representedObject as? String else { return }
 
         NSApp.activate(ignoringOtherApps: true)
 
-        let swapUsed = snapshot.swapUsedBytes.map(formatBytes) ?? "an unknown amount of swap"
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Restart Mac?"
-        alert.informativeText = "Swap is high at \(swapUsed). Restarting clears the current swap state, but open apps will close and unsaved work may be lost."
-        alert.addButton(withTitle: "Restart Mac")
+        alert.messageText = "Quit \(appName)?"
+        alert.informativeText = "This asks \(appName) to quit normally so macOS can reclaim memory and reduce swap pressure. Unsaved work in that app may need attention."
+        alert.addButton(withTitle: "Quit \(appName)")
         alert.addButton(withTitle: "Cancel")
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
-        if let errorMessage = restartRequester.requestRestart() {
-            showRestartFailure(errorMessage)
+        switch appQuitRequester.requestQuit(appName: appName) {
+        case .requested:
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                self?.refresh()
+            }
+        case .notFound:
+            showActionFailure("\(appName) is no longer running.")
+        case .failed:
+            showActionFailure("macOS could not ask \(appName) to quit.")
         }
     }
 
-    private func showRestartFailure(_ message: String) {
+    private func showActionFailure(_ message: String) {
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = "Could not restart Mac"
+        alert.messageText = "Action failed"
         alert.informativeText = message
         alert.addButton(withTitle: "OK")
         alert.runModal()

@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import Foundation
+import HeadroomCore
 
 enum PressureState: String {
     case normal = "Normal"
@@ -267,6 +268,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     private let sampler = MemorySampler()
     private let topAppSampler = TopAppSampler()
     private let imageFactory = DotImageFactory()
+    private let restartRequester = SystemRestartRequester()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private var timer: Timer?
     private var latestSnapshot: MemorySnapshot?
@@ -299,7 +301,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         latestSnapshot = sampler.sample()
         if let snapshot = latestSnapshot {
             statusItem.button?.image = imageFactory.image(for: snapshot.pressure)
-            statusItem.button?.toolTip = "Memory pressure: \(snapshot.statusSummary)"
+            statusItem.button?.toolTip = statusItemTooltip(for: snapshot)
         }
         statusItem.menu = makeMenu()
         refreshTopApps()
@@ -334,6 +336,12 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             }
             if snapshot.pressure != .normal {
                 menu.addItem(disabledItem(snapshot.plainEnglish))
+            }
+            if isSwapHigh(snapshot) {
+                menu.addItem(disabledItem("Swap is high; restart can help"))
+                let restartItem = NSMenuItem(title: "Restart Mac...", action: #selector(confirmRestartMac), keyEquivalent: "")
+                restartItem.target = self
+                menu.addItem(restartItem)
             }
 
             menu.addItem(.separator())
@@ -371,6 +379,22 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         menu.addItem(quitItem)
 
         return menu
+    }
+
+    private func isSwapHigh(_ snapshot: MemorySnapshot) -> Bool {
+        SwapPressurePolicy.isHigh(
+            usedBytes: snapshot.swapUsedBytes,
+            totalBytes: snapshot.swapTotalBytes
+        )
+    }
+
+    private func statusItemTooltip(for snapshot: MemorySnapshot) -> String {
+        var lines = ["Memory pressure: \(snapshot.statusSummary)"]
+        if isSwapHigh(snapshot), let swapUsedBytes = snapshot.swapUsedBytes {
+            lines.append("Swap high: \(formatBytes(swapUsedBytes)) used")
+            lines.append("Click for Restart Mac option")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private func disabledItem(_ title: String) -> NSMenuItem {
@@ -416,6 +440,35 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    @objc private func confirmRestartMac() {
+        guard let snapshot = latestSnapshot else { return }
+
+        NSApp.activate(ignoringOtherApps: true)
+
+        let swapUsed = snapshot.swapUsedBytes.map(formatBytes) ?? "an unknown amount of swap"
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Restart Mac?"
+        alert.informativeText = "Swap is high at \(swapUsed). Restarting clears the current swap state, but open apps will close and unsaved work may be lost."
+        alert.addButton(withTitle: "Restart Mac")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        if let errorMessage = restartRequester.requestRestart() {
+            showRestartFailure(errorMessage)
+        }
+    }
+
+    private func showRestartFailure(_ message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = "Could not restart Mac"
+        alert.informativeText = message
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }
 

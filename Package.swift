@@ -11,8 +11,16 @@ let package = Package(
         .executable(name: "Headroom", targets: ["Headroom"])
     ],
     targets: [
+        .target(
+            name: "HeadroomCore"
+        ),
         .executableTarget(
-            name: "Headroom"
+            name: "Headroom",
+            dependencies: ["HeadroomCore"]
+        ),
+        .testTarget(
+            name: "HeadroomCoreTests",
+            dependencies: ["HeadroomCore"]
         )
     ]
 )

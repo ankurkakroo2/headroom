@@ -328,18 +328,19 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
 
         if let snapshot = latestSnapshot {
+            let swapIsHigh = isSwapHigh(snapshot)
+
             menu.addItem(disabledItem("Memory pressure: \(snapshot.statusSummary)"))
             if let swapUsedBytes = snapshot.swapUsedBytes {
                 menu.addItem(disabledItem("Swap used: \(formatBytes(swapUsedBytes))"))
             } else {
                 menu.addItem(disabledItem("Swap used: unavailable"))
             }
-            if snapshot.pressure != .normal {
+            if snapshot.pressure != .normal && !swapIsHigh {
                 menu.addItem(disabledItem(snapshot.plainEnglish))
             }
-            if isSwapHigh(snapshot) {
-                menu.addItem(disabledItem("Swap is high; okay if Mac feels fine"))
-                menu.addItem(disabledItem("If slow, quit an app or consider restart"))
+            if swapIsHigh {
+                menu.addItem(disabledItem("High swap, okay if responsive"))
                 if let reliefMenuItem = makeReliefMenuItem() {
                     menu.addItem(reliefMenuItem)
                 }
@@ -398,6 +399,8 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             quitItem.representedObject = app.name
             submenu.addItem(quitItem)
         }
+        submenu.addItem(.separator())
+        submenu.addItem(disabledItem("Restart only if still slow"))
         item.submenu = submenu
         return item
     }
@@ -412,8 +415,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
     private func statusItemTooltip(for snapshot: MemorySnapshot) -> String {
         var lines = ["Memory pressure: \(snapshot.statusSummary)"]
         if isSwapHigh(snapshot), let swapUsedBytes = snapshot.swapUsedBytes {
-            lines.append("Swap high: \(formatBytes(swapUsedBytes)) used")
-            lines.append("Okay if Mac feels fine")
+            lines.append("High swap: \(formatBytes(swapUsedBytes))")
             lines.append("Click for relief options")
         }
         return lines.joined(separator: "\n")

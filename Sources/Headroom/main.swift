@@ -338,7 +338,11 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
                 menu.addItem(disabledItem(snapshot.plainEnglish))
             }
             if isSwapHigh(snapshot) {
-                menu.addItem(disabledItem("Swap is high; quit a top app to recover"))
+                menu.addItem(disabledItem("Swap is high; okay if Mac feels fine"))
+                menu.addItem(disabledItem("If slow, quit an app or consider restart"))
+                if let reliefMenuItem = makeReliefMenuItem() {
+                    menu.addItem(reliefMenuItem)
+                }
             }
 
             menu.addItem(.separator())
@@ -355,18 +359,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             if !topApps.isEmpty {
                 menu.addItem(disabledItem("Top app groups"))
                 for app in topApps {
-                    if appQuitRequester.canRequestQuit(appName: app.name) {
-                        let quitItem = NSMenuItem(
-                            title: "      Quit \(app.name): ~\(formatBytes(app.bytes))",
-                            action: #selector(confirmQuitApp(_:)),
-                            keyEquivalent: ""
-                        )
-                        quitItem.target = self
-                        quitItem.representedObject = app.name
-                        menu.addItem(quitItem)
-                    } else {
-                        menu.addItem(grandchildItem("\(app.name): ~\(formatBytes(app.bytes))"))
-                    }
+                    menu.addItem(grandchildItem("\(app.name): ~\(formatBytes(app.bytes))"))
                 }
             }
 
@@ -389,6 +382,26 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    private func makeReliefMenuItem() -> NSMenuItem? {
+        let closeableApps = topApps.filter { appQuitRequester.canRequestQuit(appName: $0.name) }
+        guard !closeableApps.isEmpty else { return nil }
+
+        let item = NSMenuItem(title: "Relieve Pressure", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for app in closeableApps {
+            let quitItem = NSMenuItem(
+                title: "Quit \(app.name) (~\(formatBytes(app.bytes)))",
+                action: #selector(confirmQuitApp(_:)),
+                keyEquivalent: ""
+            )
+            quitItem.target = self
+            quitItem.representedObject = app.name
+            submenu.addItem(quitItem)
+        }
+        item.submenu = submenu
+        return item
+    }
+
     private func isSwapHigh(_ snapshot: MemorySnapshot) -> Bool {
         SwapPressurePolicy.isHigh(
             usedBytes: snapshot.swapUsedBytes,
@@ -400,7 +413,8 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         var lines = ["Memory pressure: \(snapshot.statusSummary)"]
         if isSwapHigh(snapshot), let swapUsedBytes = snapshot.swapUsedBytes {
             lines.append("Swap high: \(formatBytes(swapUsedBytes)) used")
-            lines.append("Click to quit a top app")
+            lines.append("Okay if Mac feels fine")
+            lines.append("Click for relief options")
         }
         return lines.joined(separator: "\n")
     }
@@ -466,7 +480,11 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
         switch appQuitRequester.requestQuit(appName: appName) {
         case .requested:
+            refresh()
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                self?.refresh()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
                 self?.refresh()
             }
         case .notFound:

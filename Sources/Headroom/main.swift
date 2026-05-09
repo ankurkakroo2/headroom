@@ -391,7 +391,7 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
         let submenu = NSMenu()
         for app in closeableApps {
             let quitItem = NSMenuItem(
-                title: "Quit \(app.name) (~\(formatBytes(app.bytes)))",
+                title: "\(app.name) (~\(formatBytes(app.bytes)))",
                 action: #selector(confirmQuitApp(_:)),
                 keyEquivalent: ""
             )
@@ -399,8 +399,6 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
             quitItem.representedObject = app.name
             submenu.addItem(quitItem)
         }
-        submenu.addItem(.separator())
-        submenu.addItem(disabledItem("Restart only if still slow"))
         item.submenu = submenu
         return item
     }

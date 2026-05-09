@@ -389,6 +389,8 @@ final class HeadroomApp: NSObject, NSApplicationDelegate {
 
         let item = NSMenuItem(title: "Relieve Pressure", action: nil, keyEquivalent: "")
         let submenu = NSMenu()
+        submenu.addItem(disabledItem("Click an app to quit"))
+        submenu.addItem(.separator())
         for app in closeableApps {
             let quitItem = NSMenuItem(
                 title: "\(app.name) (~\(formatBytes(app.bytes)))",

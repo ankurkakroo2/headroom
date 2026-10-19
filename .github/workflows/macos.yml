@@ -1,0 +1,32 @@
+name: macOS validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: swift --version
+      - name: Unit tests and Darwin API smoke tests
+        run: swift test
+      - name: Release app bundle
+        run: ./scripts/build-app.sh
+      - name: Validate bundle
+        run: |
+          test -x dist/Headroom.app/Contents/MacOS/Headroom
+          test -s dist/Headroom.app/Contents/Resources/Headroom.icns
+          plutil -lint dist/Headroom.app/Contents/Info.plist
+          codesign --verify --deep --strict dist/Headroom.app
+          file dist/Headroom.app/Contents/MacOS/Headroom
